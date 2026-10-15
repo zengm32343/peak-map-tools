@@ -1,0 +1,15 @@
+# Game files and build output must never be committed
+*.dll
+*.zip
+ref/
+bin/
+obj/
+out/
+work/
+*.unity3d
+*.assets
+*.resS
+__pycache__/
+.venv/
+.pytest_cache/
+.DS_Store

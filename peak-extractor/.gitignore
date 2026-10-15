@@ -1,0 +1,9 @@
+work/
+out/
+*.unity3d
+*.assets
+*.resS
+level[0-9]*
+globalgamemanagers*
+__pycache__/
+.venv/

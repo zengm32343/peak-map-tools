@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>10.0</LangVersion>
+    <AssemblyName>PeakShot</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="src/**/*.cs" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="bin/BepInEx.dll" Private="false" />
+    <Reference Include="bin/0Harmony.dll" Private="false" />
+    <Reference Include="ref/*.dll" Exclude="ref/netstandard.dll;ref/mscorlib.dll;ref/System*.dll;ref/Mono.*.dll" Private="false" />
+  </ItemGroup>
+</Project>
