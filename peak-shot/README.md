@@ -2,7 +2,7 @@
 
 BepInEx 5 (Mono) plugin for **PEAK** that renders 2D map screenshots of every daily island and writes the
 on-screen position of each point of interest (luggage, belltowers, critters, amulet statues, tombs) to JSON.
-It powers the daily map on [peakmaptoday.org](https://peakmaptoday.org). Tested on PEAK 2.6.b.
+It powers the [daily PEAK map](https://peakmaptoday.org/map/) on [peakmaptoday.org](https://peakmaptoday.org). Tested on PEAK 2.6.b.
 
 No game files are included. You need your own copy of PEAK.
 

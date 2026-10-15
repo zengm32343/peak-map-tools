@@ -4,6 +4,8 @@ Extracts the points of interest of every daily island in **PEAK** (Aggro Crab / 
 directly from *your own* local copy of the game, and computes which island is active on a
 given day. No game assets are included in this repository; you need a legally obtained install.
 
+Its rotation logic and server check back the daily island shown on [peakmaptoday.org](https://peakmaptoday.org/today/biomes/).
+
 Output per level: segment, biome, world position (x, y, z) and a normalized top-down
 coordinate for luggage (normal / big / explorer / ancient / clown / trick), belltowers,
 critters (capybara, antlion, beehive spawn, early-worm spawn), amulet statues, the tomb,
