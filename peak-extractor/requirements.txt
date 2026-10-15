@@ -3,3 +3,6 @@ numpy
 # 3D models (`model` command)
 trimesh
 pyfqmr
+# palette calibration (`model --shots`)
+moderngl
+Pillow

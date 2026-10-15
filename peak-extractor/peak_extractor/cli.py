@@ -5,7 +5,7 @@
   python -m peak_extractor schedule --data work/unpacked --start 2026-10-01 --days 30
   python -m peak_extractor fetch-day --data work/unpacked --out out/day
   python -m peak_extractor render   --data work/unpacked --extract out --out out/maps
-  python -m peak_extractor model    --data work/unpacked --out out/models --levels Level_4
+  python -m peak_extractor model    --data work/unpacked --out out/models --shots captures --levels Level_4
   python -m peak_extractor verify   --data work/unpacked --extract out --out out/verify/report.md
 """
 from __future__ import annotations
@@ -135,6 +135,7 @@ def cmd_model(a):
     names = [os.path.splitext(os.path.basename(p))[0] for p in scenes]
     only = set(a.levels.split(",")) if a.levels else None
     si = ScriptIndex(a.data)
+    pooled, written = {}, {}
     for name in names:
         if only and name not in only:
             continue
@@ -143,12 +144,56 @@ def cmd_model(a):
         os.makedirs(out_dir, exist_ok=True)
         sc = Scene(os.path.join(a.data, files[name]), si, set())
         inst, meshes, mats = model.collect(a.data, files[name], sc)
-        colors = model.palette(mats)
+        params = model.palette(mats)
+        colors, calib = params, None
+        shots = os.path.join(a.shots, name) if a.shots else None
+        if shots and os.path.exists(os.path.join(shots, "level.json")):
+            colors, calib = _calibrate(shots, inst, meshes, params, pooled)
         stats = model.build_glb(inst, meshes, colors, os.path.join(out_dir, "model.glb"))
+        doc = {"format": "peak-model/1", "generator": f"peak-extractor {__version__}",
+               "palette": colors, "stats": stats}
+        if calib:
+            doc["calibration"] = calib
         with open(os.path.join(out_dir, "model.json"), "w") as fh:
-            json.dump({"format": "peak-model/1", "generator": f"peak-extractor {__version__}",
-                       "palette": colors, "stats": stats}, fh, indent=1)
-        print(name, stats, f"{time.time() - t0:.0f}s")
+            json.dump(doc, fh, indent=1)
+        written[name] = (out_dir, params, calib)
+        print(name, stats, calib and calib["materials"], f"{time.time() - t0:.0f}s")
+    if pooled:
+        _fill_from_pool(written, pooled)
+
+
+def _calibrate(shots, inst, meshes, params, pooled):
+    import numpy as np
+    from . import calibrate
+    samples, report = calibrate.collect_samples(shots, inst, meshes, np.random.default_rng(0))
+    merged = {n: {c: np.concatenate(v) for c, v in d.items()} for n, d in samples.items()}
+    for n, d in merged.items():
+        for c, arr in d.items():
+            pooled.setdefault(n, {}).setdefault(c, []).append(arr[:5000])
+    colors = calibrate.palette_from(merged, params)
+    hit = sorted(n for n in colors if colors[n] != params[n])
+    return colors, {"views": report, "materials": len(hit), "calibrated": hit}
+
+
+def _fill_from_pool(written, pooled):
+    """Materials not seen in a level's own screenshots take the all-levels median."""
+    import numpy as np
+    from . import calibrate
+    pool = {n: {c: np.concatenate(v) for c, v in d.items()} for n, d in pooled.items()}
+    for name, (out_dir, params, calib) in written.items():
+        path = os.path.join(out_dir, "model.json")
+        with open(path) as fh:
+            doc = json.load(fh)
+        own = set(calib["calibrated"]) if calib else set()
+        shared = calibrate.palette_from(pool, params)
+        n = 0
+        for m in doc["palette"]:
+            if m not in own and shared.get(m) != params.get(m):
+                doc["palette"][m] = shared[m]
+                n += 1
+        with open(path, "w") as fh:
+            json.dump(doc, fh, indent=1)
+        print(name, "pooled colours for", n, "materials")
 
 
 def cmd_verify(a):
@@ -184,7 +229,9 @@ def main(argv=None):
     r.add_argument("--save-grid", action="store_true"); r.set_defaults(fn=cmd_render)
     mo = sub.add_parser("model", help="stylized 3D level model (GLB + palette) from visual meshes")
     mo.add_argument("--data", required=True); mo.add_argument("--out", required=True, help="writes <out>/<Level_N>/model.glb")
-    mo.add_argument("--levels"); mo.set_defaults(fn=cmd_model)
+    mo.add_argument("--levels")
+    mo.add_argument("--shots", help="PeakShot captures dir (<shots>/<Level_N>/level.json); calibrates the palette")
+    mo.set_defaults(fn=cmd_model)
     v = sub.add_parser("verify", help="compare against PeakMap/site data; writes a report (read-only)")
     v.add_argument("--data", required=True); v.add_argument("--extract", required=True)
     v.add_argument("--out", default="out/verify/report.md"); v.add_argument("--day")

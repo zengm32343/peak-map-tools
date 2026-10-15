@@ -86,7 +86,7 @@ biome tint) with our markers; 1 px = 1 m, frame x∈[-300,300], z∈[-480,2400].
 ## 3D level models
 
 ```bash
-python -m peak_extractor model --data work/unpacked --out out/models [--levels Level_4]
+python -m peak_extractor model --data work/unpacked --out out/models [--shots captures] [--levels Level_4]
 ```
 
 Writes `out/models/Level_N/model.glb` and `model.json` (`{"format": "peak-model/1", "palette": {...}, "stats": {...}}`),
@@ -102,6 +102,18 @@ about 2–3 MB per level. Needs `trimesh` and `pyfqmr` (see `requirements.txt`) 
 * Axes: glTF is right-handed, Unity left-handed, so world x is negated (marker positions need the same flip).
 * `palette` gives a stylized two-tone colour per material name — `side` for walls, `top` for upward faces —
   derived from the material's base/top colour parameters. The viewer blends them by face normal.
+
+### Palette calibration (`--shots`)
+
+PEAK's rock and foliage textures are grayscale noise, so the parameter-derived colours only approximate the
+in-game look. With `--shots` pointing at [PeakShot](../peak-shot) captures (`<shots>/Level_N/level.json` + images),
+each captured view is re-rendered offscreen (moderngl) from the exact camera with every material as a flat ID.
+Projected marker `world` positions are checked against the capture's `px` and views that don't line up are skipped.
+For pixels away from ID edges and within 900 m, the median screenshot colour per material becomes `side`
+(|normal.y| < 0.45) or `top` (normal.y > 0.75). Materials that render where the screenshot shows sky are treated as
+hidden at runtime for that view. Materials not seen in a level's own captures use the median over all levels;
+anything else keeps the parameter colour. `model.json` gains a `calibration` block (per-view alignment error and
+the calibrated material list). Only colours are kept — no pixels from the screenshots end up in the output.
 
 The model files are derived from your own copy of the game; don't commit them to this repository.
 
