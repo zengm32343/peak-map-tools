@@ -5,6 +5,7 @@
   python -m peak_extractor schedule --data work/unpacked --start 2026-10-01 --days 30
   python -m peak_extractor fetch-day --data work/unpacked --out out/day
   python -m peak_extractor render   --data work/unpacked --extract out --out out/maps
+  python -m peak_extractor model    --data work/unpacked --out out/models --levels Level_4
   python -m peak_extractor verify   --data work/unpacked --extract out --out out/verify/report.md
 """
 from __future__ import annotations
@@ -125,6 +126,31 @@ def cmd_render(a):
         print(name, f"tris={sum(len(t) for t, _ in tl)} coverage={np.isfinite(h).mean():.2f}", paths[0])
 
 
+def cmd_model(a):
+    import time
+    from . import model
+    from .scene import Scene
+    scenes, _ = read_mapbaker(a.data)
+    files = _scene_file_map(a.data)
+    names = [os.path.splitext(os.path.basename(p))[0] for p in scenes]
+    only = set(a.levels.split(",")) if a.levels else None
+    si = ScriptIndex(a.data)
+    for name in names:
+        if only and name not in only:
+            continue
+        t0 = time.time()
+        out_dir = os.path.join(a.out, name)
+        os.makedirs(out_dir, exist_ok=True)
+        sc = Scene(os.path.join(a.data, files[name]), si, set())
+        inst, meshes, mats = model.collect(a.data, files[name], sc)
+        colors = model.palette(mats)
+        stats = model.build_glb(inst, meshes, colors, os.path.join(out_dir, "model.glb"))
+        with open(os.path.join(out_dir, "model.json"), "w") as fh:
+            json.dump({"format": "peak-model/1", "generator": f"peak-extractor {__version__}",
+                       "palette": colors, "stats": stats}, fh, indent=1)
+        print(name, stats, f"{time.time() - t0:.0f}s")
+
+
 def cmd_verify(a):
     from .verify import build_report
     day = None
@@ -156,6 +182,9 @@ def main(argv=None):
     r.add_argument("--data", required=True); r.add_argument("--extract", required=True)
     r.add_argument("--out", required=True); r.add_argument("--levels"); r.add_argument("--res", type=float, default=1.0)
     r.add_argument("--save-grid", action="store_true"); r.set_defaults(fn=cmd_render)
+    mo = sub.add_parser("model", help="stylized 3D level model (GLB + palette) from visual meshes")
+    mo.add_argument("--data", required=True); mo.add_argument("--out", required=True, help="writes <out>/<Level_N>/model.glb")
+    mo.add_argument("--levels"); mo.set_defaults(fn=cmd_model)
     v = sub.add_parser("verify", help="compare against PeakMap/site data; writes a report (read-only)")
     v.add_argument("--data", required=True); v.add_argument("--extract", required=True)
     v.add_argument("--out", default="out/verify/report.md"); v.add_argument("--day")

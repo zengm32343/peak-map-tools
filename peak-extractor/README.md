@@ -83,6 +83,28 @@ python -m peak_extractor verify --data work/unpacked --extract out --out out/ver
 Maps are drawn from the active MeshColliders (max-height raster, hillshade, 25 m contours,
 biome tint) with our markers; 1 px = 1 m, frame x∈[-300,300], z∈[-480,2400].
 
+## 3D level models
+
+```bash
+python -m peak_extractor model --data work/unpacked --out out/models [--levels Level_4]
+```
+
+Writes `out/models/Level_N/model.glb` and `model.json` (`{"format": "peak-model/1", "palette": {...}, "stats": {...}}`),
+about 2–3 MB per level. Needs `trimesh` and `pyfqmr` (see `requirements.txt`) and
+[gltfpack](https://meshoptimizer.org/gltf/) on `PATH` (falls back to `npx gltfpack`).
+
+* Geometry is the visible scene: every enabled `MeshRenderer` under `Map/Biome_N` with its `MeshFilter` mesh.
+  No textures or shaders are exported.
+* LOD: `LODGroup` entries and `*_AutoLOD/…_LOD_N` children are resolved per object; large objects keep a finer
+  LOD (radius > 40 m → LOD0, > 15 m → LOD1, > 6 m → LOD2, else the coarsest).
+* Each unique mesh is simplified (pyfqmr) to a cap from its world size and instance count, then written once
+  and drawn with GPU instancing (`gltfpack -cc -mi -vpf -km`, `EXT_meshopt_compression` + `EXT_mesh_gpu_instancing`).
+* Axes: glTF is right-handed, Unity left-handed, so world x is negated (marker positions need the same flip).
+* `palette` gives a stylized two-tone colour per material name — `side` for walls, `top` for upward faces —
+  derived from the material's base/top colour parameters. The viewer blends them by face normal.
+
+The model files are derived from your own copy of the game; don't commit them to this repository.
+
 ## Known limitations
 
 * Amulet *type* per statue is chosen at runtime (`StatueSpawnRandomizationStep`, random offset),

@@ -9,6 +9,8 @@ work/
 *.unity3d
 *.assets
 *.resS
+*.glb
+model.json
 __pycache__/
 .venv/
 .pytest_cache/
